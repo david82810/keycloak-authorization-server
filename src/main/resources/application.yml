@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: keycloak-authorization-server
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8787/realms/myRealm/protocol/openid-connect/certs

@@ -1,0 +1,87 @@
+啟動一個 Keycloak Authorization Server
+1. 下載 Keycloak Server / Docker 安裝
+
+本範例使用 Docker
+
+```shell
+## dev 版本需要給定 KC_BOOTSTRAP_ADMIN_USERNAME 跟 PASSWORD 才能訪問
+
+docker run -p 8787:8080 --name keycloak \
+  -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+  -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+  quay.io/keycloak/keycloak:latest start-dev
+
+
+  #### 訪問 127.0.0.1:8787 可以到 Keycloak login page
+  #### 輸入  KC_BOOTSTRAP_ADMIN_USERNAME KC_BOOTSTRAP_ADMIN_PASSWORD 即可登入
+
+```
+
+
+2.登入 Keycloak
+輸入帳密登入 KeyCloak
+左側可以選擇新增 Realm
+
+STEP1. Create realm
+    輸入 realm name 按下新增
+
+STEP2. 新增該 realm 的使用者
+    點選左側的 Users -> Add user
+    輸入 Username, Email, First Name, Last Name
+    點選 Save
+    接著選取該 User 並選擇 Credentials 設定密碼
+    點選 Set Password
+
+STEP3. 新增 Client
+    點選左側的 Clients -> Create
+    輸入 Client ID, 點選 Next
+
+    toggle Client authentication to "ON"
+    cancel 'Direct access grant' check box
+
+    Next
+
+    輸入 Root URL, Valid redirect URIs, Web Origins
+    Root URL: http://localhost:3000
+    Valid redirect URIs: http://localhost:3000/*
+    Web Origins: http://localhost:3000/
+    點選 Save 即完成 Client 設定
+
+STEP4. 新增 Client scope
+    點選左側的 Clients -> Default Client Scopes -> Create
+    輸入 Name, Description
+    toggle Include in token scope "ON" => 這樣才會在 token body 的 scope 內
+    點選 Save
+
+STEP5. 將新增的 scope 加入 Client
+    點選左側的 Clients -> Client Scopes -> Available Client Scopes
+    將剛剛新增的 scope 加入到 Assigned Default Client Scopes
+    點選 Save
+
+
+此 Spring Boot 為 Resource Server , application.yml 設定 Keycloak Authorization Server 的 Public Key 位置
+
+
+STEP6. 修改 Keycloak_AuthorizationServer index.html 的 Keycloak 設定
+    將 index.html 的 Keycloak 設定改為剛剛新增的 Realm, Client ID, scope, Public Key URL
+
+STEP7. 啟動前端
+npx http-server --cors -p 3000
+
+點擊連結即可到 Keycloak 登入畫面,輸入帳密,成功會跳回 index.html 並取得 code
+
+STEP8. 拿到 code ,call Token API 取的 access token
+
+拿到 code 去 POST http://localhost:8787/realms/${YOUR_REALM}/protocol/openid-connect/token 取回 access_token
+
+curl -X POST 'http://localhost:8787/realms/${YOUR_REALM}/protocol/openid-connect/token' \
+-H 'Content-Type: application/x-www-form-urlencoded' \
+-d "grant_type=authorization_code" \
+-d "client_id=${YOUR_CLIENT_ID}" \
+-d "client_secret=${YOUR_CLIENT_SECRET}" \
+-d "code=${YOUR_CODE}" \
+-d "redirect_uri=${REDIRECT_URI_YOU_SETTING}"
+
+STEP9. 使用 access token 去呼叫 Resource Server API
+curl -X GET 'http://localhost:8080/test \
+-H 'Authorization: Bearer ${YOUR_ACCESS_TOKEN}'
